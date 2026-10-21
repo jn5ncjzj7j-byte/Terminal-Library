@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Loop-Retry Asset Downloader)
+	TerminalLib - Custom TUI Library for Roblox (Debug-Enabled Asset Downloader)
 ]=]
 
 local TerminalLib = {}
@@ -74,7 +74,6 @@ function TerminalLib:ConfigureToggle(config)
 				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
 				
 				if writefile and getcustomasset then
-					-- Run in a separate thread so it loops and forces loading until it succeeds
 					task.spawn(function()
 						local function randHex(length)
 							local chars = "abcdef0123456789"
@@ -87,33 +86,43 @@ function TerminalLib:ConfigureToggle(config)
 						end
 						
 						local fileName = string.format("%s-%s-%s.png", randHex(4), randHex(4), randHex(4))
-						local loaded = false
 						
-						-- Loop-load retry mechanism until the image successfully downloads and applies
-						for attempt = 1, 5 do
-							local success, response = pcall(function()
-								return game:HttpGet(imgTarget)
-							end)
-							if success and response and #response > 100 then
-								local writeSuccess = pcall(function()
-									writefile(fileName, response)
-								end)
-								if writeSuccess then
-									local assetSuccess, assetId = pcall(function()
-										return getcustomasset(fileName)
-									end)
-									if assetSuccess and assetId then
-										icon.Image = assetId
-										loaded = true
-										break
-									end
-								end
-							end
-							task.wait(0.5) -- Wait half a second before retrying if it fails
+						-- Try downloading and print error if it fails
+						local success, response = pcall(function()
+							return game:HttpGet(imgTarget)
+						end)
+						
+						if not success then
+							self:Print("HttpGet Error: " .. tostring(response), Color3.fromRGB(255, 80, 80))
+							icon.Image = imgTarget
+							return
 						end
 						
-						-- Fallback if download fails completely
-						if not loaded then
+						if not response or #response < 50 then
+							self:Print("Error: Image data empty or invalid URL.", Color3.fromRGB(255, 80, 80))
+							icon.Image = imgTarget
+							return
+						end
+						
+						local writeSuccess, writeErr = pcall(function()
+							writefile(fileName, response)
+						end)
+						
+						if not writeSuccess then
+							self:Print("WriteFile Error: " .. tostring(writeErr), Color3.fromRGB(255, 80, 80))
+							icon.Image = imgTarget
+							return
+						end
+						
+						local assetSuccess, assetId = pcall(function()
+							return getcustomasset(fileName)
+						end)
+						
+						if assetSuccess and assetId then
+							icon.Image = assetId
+							self:Print("Logo loaded successfully via file!", Color3.fromRGB(0, 255, 100))
+						else
+							self:Print("GetCustomAsset Error: " .. tostring(assetId), Color3.fromRGB(255, 80, 80))
 							icon.Image = imgTarget
 						end
 					end)
