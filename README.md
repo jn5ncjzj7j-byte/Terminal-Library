@@ -22,7 +22,7 @@ You can easily load and use this library directly in your Roblox scripts via `lo
 
 ```lua
 -- Load the library from GitHub
-local TerminalLib = loadstring(game:HttpGet("[https://raw.githubusercontent.com/jn5ncjzj7j-byte/Terminal-Library/refs/heads/main/src/TerminalLibrary.lua](https://raw.githubusercontent.com/jn5ncjzj7j-byte/Terminal-Library/refs/heads/main/src/TerminalLibrary.lua)"))()
+local TerminalLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jn5ncjzj7j-byte/Terminal-Library/refs/heads/main/src/TerminalLibrary.lua"))()
 
 -- Initialize your terminal window
 local Terminal = TerminalLib.new("My Script Hub")
