@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Pre-loaded Web Image Sync)
+	TerminalLib - Custom TUI Library for Roblox (Auto-Scaling Toggle Image)
 ]=]
 
 local TerminalLib = {}
@@ -26,7 +26,7 @@ function TerminalLib.new(titleText)
 	self.ToggleConfig = {
 		Text = "Misg Hub",
 		Image = nil,
-		Size = UDim2.new(0, 110, 0, 45),
+		Size = UDim2.new(0, 50, 0, 50),
 		Position = UDim2.new(0, 20, 0, 20),
 		BackgroundColor = Color3.fromRGB(30, 30, 30),
 		TextColor = Color3.fromRGB(0, 255, 100)
@@ -57,9 +57,22 @@ function TerminalLib:ConfigureToggle(config)
 			self.ToggleBtn.Text = ""
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
 			icon.Name = "ToggleIcon"
-			icon.Size = UDim2.new(1, -10, 1, -10)
-			icon.Position = UDim2.new(0, 5, 0, 5)
+			
+			-- AUTO-SCALE PROPORTIONS: Anchor in center with padding
+			icon.AnchorPoint = Vector2.new(0.5, 0.5)
+			icon.Size = UDim2.new(1, -8, 1, -8)
+			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 			icon.BackgroundTransparency = 1
+			
+			-- Fit image perfectly regardless of resolution (1000x1000, 4K, etc.)
+			icon.ScaleType = Enum.ScaleType.Fit
+			
+			-- Add AspectRatio constraint so high-res square images never stretch
+			local aspect = icon:FindFirstChildOfClass("UIAspectRatioConstraint") or Instance.new("UIAspectRatioConstraint")
+			aspect.AspectRatio = 1
+			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+			aspect.DominantAxis = Enum.DominantAxis.Width
+			aspect.Parent = icon
 			
 			local imgTarget = self.ToggleConfig.Image
 			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
@@ -67,7 +80,6 @@ function TerminalLib:ConfigureToggle(config)
 				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
 				
 				if writefile and getcustomasset then
-					-- Force synchronous download so it is ready instantly
 					local success, response = pcall(function()
 						return game:HttpGet(imgTarget)
 					end)
