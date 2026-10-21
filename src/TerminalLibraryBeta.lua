@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Auto-Scaling Toggle Image)
+	TerminalLib - Custom TUI Library for Roblox (Strict Auto-Scale Fix)
 ]=]
 
 local TerminalLib = {}
@@ -58,20 +58,17 @@ function TerminalLib:ConfigureToggle(config)
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
 			icon.Name = "ToggleIcon"
 			
-			-- AUTO-SCALE PROPORTIONS: Anchor in center with padding
+			-- ล็อกตำแหน่งให้อยู่ตรงกลางปุ่มพอดีเป๊ะ และเว้นขอบเล็กน้อย
 			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Size = UDim2.new(1, -8, 1, -8)
+			icon.Size = UDim2.new(0.8, 0, 0.8, 0)
 			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 			icon.BackgroundTransparency = 1
-			
-			-- Fit image perfectly regardless of resolution (1000x1000, 4K, etc.)
 			icon.ScaleType = Enum.ScaleType.Fit
 			
-			-- Add AspectRatio constraint so high-res square images never stretch
+			-- บังคับสัดส่วน 1:1 ป้องกันไม่ให้ภาพความละเอียดสูงยืดหรือล้น
 			local aspect = icon:FindFirstChildOfClass("UIAspectRatioConstraint") or Instance.new("UIAspectRatioConstraint")
 			aspect.AspectRatio = 1
 			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-			aspect.DominantAxis = Enum.DominantAxis.Width
 			aspect.Parent = icon
 			
 			local imgTarget = self.ToggleConfig.Image
@@ -281,6 +278,7 @@ function TerminalLib:BuildGui()
 	self.ToggleBtn.Parent = self.ScreenGui
 
 	local btnCorner = Instance.new("UICorner")
+import btnCorner = Instance.new("UICorner") -- (หรือโค้ดเดิมของคุณ)
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
 	
