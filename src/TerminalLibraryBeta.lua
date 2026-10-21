@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox with Custom Toggle & Keybind Command
+	TerminalLib - Custom TUI Library for Roblox (Fixed Auto-Complete & Execution)
 ]=]
 
 local TerminalLib = {}
@@ -21,13 +21,11 @@ function TerminalLib.new(titleText)
 	self.IsOpen = true
 	self.Title = titleText or ("Misg-Hub @" .. self.Player.Name .. "~")
 	
-	-- Default toggle keybind (Right Control)
 	self.ToggleKey = Enum.KeyCode.RightControl
 	
-	-- Toggle Button Customization Properties
 	self.ToggleConfig = {
 		Text = "Misg Hub",
-		Image = nil, -- Can be rbxassetid://... or http url
+		Image = nil,
 		Size = UDim2.new(0, 110, 0, 45),
 		Position = UDim2.new(0, 20, 0, 20),
 		BackgroundColor = Color3.fromRGB(30, 30, 30),
@@ -40,7 +38,6 @@ function TerminalLib.new(titleText)
 	return self
 end
 
--- METHOD TO CUSTOMIZE TOGGLE BUTTON APPERANCE
 function TerminalLib:ConfigureToggle(config)
 	if not config then return end
 	if config.Text ~= nil then self.ToggleConfig.Text = config.Text end
@@ -50,7 +47,6 @@ function TerminalLib:ConfigureToggle(config)
 	if config.BackgroundColor ~= nil then self.ToggleConfig.BackgroundColor = config.BackgroundColor end
 	if config.TextColor ~= nil then self.ToggleConfig.TextColor = config.TextColor end
 	
-	-- Re-apply settings if toggle button exists
 	if self.ToggleBtn then
 		self.ToggleBtn.Size = self.ToggleConfig.Size
 		self.ToggleBtn.Position = self.ToggleConfig.Position
@@ -102,7 +98,6 @@ function TerminalLib:BuildGui()
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = self.TerminalFrame
 
-	-- Top Bar with Stats
 	self.TopBar = Instance.new("Frame")
 	self.TopBar.Size = UDim2.new(1, 0, 0, 30)
 	self.TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -135,7 +130,6 @@ function TerminalLib:BuildGui()
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Right
 	statsLabel.Parent = self.TopBar
 
-	-- FPS & Ping Loop
 	local frameCount, lastUpdate = 0, tick()
 	RunService.RenderStepped:Connect(function()
 		frameCount += 1
@@ -151,7 +145,6 @@ function TerminalLib:BuildGui()
 		end
 	end)
 
-	-- Draggable TopBar logic
 	local dragging, dragStart, startPos
 	self.TopBar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -176,7 +169,6 @@ function TerminalLib:BuildGui()
 		end
 	end)
 
-	-- Output Scrolling Frame
 	self.OutputScroll = Instance.new("ScrollingFrame")
 	self.OutputScroll.Size = UDim2.new(1, -20, 1, -85)
 	self.OutputScroll.Position = UDim2.new(0, 10, 0, 40)
@@ -191,7 +183,6 @@ function TerminalLib:BuildGui()
 	uiList.Padding = UDim.new(0, 4)
 	uiList.Parent = self.OutputScroll
 
-	-- Suggestions Dropdown Frame
 	self.SuggestionsFrame = Instance.new("ScrollingFrame")
 	self.SuggestionsFrame.Size = UDim2.new(1, -20, 0, 65)
 	self.SuggestionsFrame.Position = UDim2.new(0, 10, 1, -112)
@@ -208,7 +199,6 @@ function TerminalLib:BuildGui()
 	sugList.Padding = UDim.new(0, 2)
 	sugList.Parent = self.SuggestionsFrame
 
-	-- Input Bar Frame
 	local inputBar = Instance.new("Frame")
 	inputBar.Size = UDim2.new(1, -20, 0, 35)
 	inputBar.Position = UDim2.new(0, 10, 1, -42)
@@ -244,7 +234,6 @@ function TerminalLib:BuildGui()
 	self.CommandInput.ClearTextOnFocus = false
 	self.CommandInput.Parent = inputBar
 
-	-- Universal Toggle Button (Works for both Mobile & PC if wanted!)
 	self.ToggleBtn = Instance.new("TextButton")
 	self.ToggleBtn.Name = "ToggleTerminalButton"
 	self.ToggleBtn.Size = self.ToggleConfig.Size
@@ -264,7 +253,6 @@ function TerminalLib:BuildGui()
 		self:ToggleVisibility()
 	end)
 
-	-- Keybind listener for toggling
 	UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if not gameProcessed and input.KeyCode == self.ToggleKey then
 			self:ToggleVisibility()
@@ -326,7 +314,6 @@ function TerminalLib:UpdateSuggestions(query)
 			btn.TextSize = 13
 			btn.Font = Enum.Font.Code
 			btn.TextXAlignment = Enum.TextXAlignment.Left
-			btn.Text = "  " + match.Name + " — " + match.Desc
 			btn.Text = "  " .. match.Name .. " — " .. match.Desc
 			btn.Parent = self.SuggestionsFrame
 			
@@ -357,7 +344,7 @@ function TerminalLib:ConnectEvents()
 		
 		if text == "" then return end
 		
-		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
+		selfRef:Print("> " + text, Color3.fromRGB(255, 255, 255))
 		
 		local split = string.split(text, " ")
 		local cmdName = split[1]
@@ -393,7 +380,6 @@ function TerminalLib:SetupDefaults()
 		end
 	end)
 
-	-- Built-in keybind changer command (e.g., 'keybind f' or 'keybind enter')
 	self:AddCommand("keybind", "Changes UI toggle key (Usage: keybind [KeyCode])", function(args)
 		local keyName = args[1]
 		if not keyName then
@@ -416,7 +402,7 @@ function TerminalLib:SetupDefaults()
 	end)
 	
 	self:Print("Terminal GUI Library Initialized.", Color3.fromRGB(0, 255, 100))
-	self:Print("Type 'help' or 'keybind' to configure your settings.", Color3.fromRGB(150, 150, 150))
+	self:Print("Type 'help' or try typing 's' for auto-suggestions.", Color3.fromRGB(150, 150, 150))
 	self:Print("------------------------------------------------", Color3.fromRGB(60, 60, 60))
 end
 
