@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Robust Custom Asset Fix)
+	TerminalLib - Custom TUI Library for Roblox (Randomized Unique Asset Caching)
 ]=]
 
 local TerminalLib = {}
@@ -75,8 +75,19 @@ function TerminalLib:ConfigureToggle(config)
 				
 				if writefile and getcustomasset then
 					pcall(function()
-						-- Use a clean unique filename for caching
-						local fileName = "terminal_custom_logo.png"
+						-- Generate a randomized unique name like XXXX-XXXX-XXXX.png
+						local function randHex(length)
+							local chars = "abcdef0123456789"
+							local s = ""
+							for i = 1, length do
+								local rand = math.random(1, #chars)
+								s = s .. chars:sub(rand, rand)
+							end
+							return s
+						end
+						
+						local fileName = string.format("%s-%s-%s.png", randHex(4), randHex(4), randHex(4))
+						
 						local success, response = pcall(function()
 							return game:HttpGet(imgTarget)
 						end)
@@ -348,7 +359,7 @@ function TerminalLib:UpdateSuggestions(query)
 			btn.TextSize = 13
 			btn.Font = Enum.Font.Code
 			btn.TextXAlignment = Enum.TextXAlignment.Left
-			btn.Text = "  " + match.Name + " — " + match.Desc
+			btn.Text = "  " .. match.Name .. " — " .. match.Desc
 			btn.Parent = self.SuggestionsFrame
 			
 			btn.MouseButton1Click:Connect(function()
@@ -376,7 +387,7 @@ function TerminalLib:ConnectEvents()
 		
 		if text == "" then return end
 		
-		selfRef:Print("> " + text, Color3.fromRGB(255, 255, 255))
+		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
 		
 		local split = string.split(text, " ")
 		local cmdName = split[1]
