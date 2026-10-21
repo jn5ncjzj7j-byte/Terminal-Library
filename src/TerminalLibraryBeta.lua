@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Fully Fixed Execution)
+	TerminalLib - Custom TUI Library for Roblox (Reliable Enter Key Fix)
 ]=]
 
 local TerminalLib = {}
@@ -335,16 +335,14 @@ function TerminalLib:ConnectEvents()
 		selfRef:UpdateSuggestions(selfRef.CommandInput.Text)
 	end)
 
-	self.CommandInput.FocusLost:Connect(function(enterPressed)
-		if not enterPressed then return end
-		
+	-- PROCESS COMMAND FUNCTION
+	local function processCommand()
 		local text = selfRef.CommandInput.Text:lower():gsub("^%s+", ""):gsub("%s+$", "")
 		selfRef.CommandInput.Text = ""
 		selfRef.SuggestionsFrame.Visible = false
 		
 		if text == "" then return end
 		
-		-- FIXED: Changed '+' to '..' for string concatenation
 		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
 		
 		local split = string.split(text, " ")
@@ -364,6 +362,19 @@ function TerminalLib:ConnectEvents()
 		end
 		
 		selfRef.CommandInput:CaptureFocus()
+	end
+
+	-- Listen to both FocusLost and Enter keypress input to guarantee it fires
+	self.CommandInput.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			processCommand()
+		end
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not gameProcessed and self.CommandInput:IsFocused() and (input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter) then
+			processCommand()
+		end
 	end)
 end
 
@@ -390,6 +401,10 @@ function TerminalLib:SetupDefaults()
 		end
 		
 		keyName = string.upper(keyName)
+		val, enumItem = pcall(function()
+			return Enum.KeyCode[keyName]
+		end)
+		
 		local success, enumItem = pcall(function()
 			return Enum.KeyCode[keyName]
 		end)
