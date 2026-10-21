@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Fixed Auto-Complete & Execution)
+	TerminalLib - Custom TUI Library for Roblox (Fully Fixed Execution)
 ]=]
 
 local TerminalLib = {}
@@ -344,7 +344,8 @@ function TerminalLib:ConnectEvents()
 		
 		if text == "" then return end
 		
-		selfRef:Print("> " + text, Color3.fromRGB(255, 255, 255))
+		-- FIXED: Changed '+' to '..' for string concatenation
+		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
 		
 		local split = string.split(text, " ")
 		local cmdName = split[1]
