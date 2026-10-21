@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Proxy & Retry Asset Downloader)
+	TerminalLib - Custom TUI Library for Roblox (Fixed Toggle Image Rendering)
 ]=]
 
 local TerminalLib = {}
@@ -55,88 +55,37 @@ function TerminalLib:ConfigureToggle(config)
 		
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
 			self.ToggleBtn.Text = ""
-			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
-			icon.Name = "ToggleIcon"
-			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Size = UDim2.new(0.85, 0, 0.85, 0)
-			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
-			icon.BackgroundTransparency = 1
-			icon.ScaleType = Enum.ScaleType.Fit
 			
-			local aspect = icon:FindFirstChildOfClass("UIAspectRatioConstraint") or Instance.new("UIAspectRatioConstraint")
-			aspect.AspectRatio = 1
-			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-			aspect.Parent = icon
+			-- Look for existing icon or create a new one securely
+			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
+			if not icon then
+				icon = Instance.new("ImageLabel")
+				icon.Name = "ToggleIcon"
+				icon.AnchorPoint = Vector2.new(0.5, 0.5)
+				icon.Size = UDim2.new(0.85, 0, 0.85, 0)
+				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+				icon.BackgroundTransparency = 1
+				icon.ScaleType = Enum.ScaleType.Fit
+				icon.Parent = self.ToggleBtn
+				
+				local aspect = Instance.new("UIAspectRatioConstraint")
+				aspect.AspectRatio = 1
+				aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+				aspect.Parent = icon
+			end
 			
 			local imgTarget = self.ToggleConfig.Image
-			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
-				local writefile = writefile or (syn and syn.writefile)
-				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
-				
-				if writefile and getcustomasset then
-					task.spawn(function()
-						local function randHex(length)
-							local chars = "abcdef0123456789"
-							local s = ""
-							for i = 1, length do
-								local rand = math.random(1, #chars)
-								s = s .. chars:sub(rand, rand)
-							end
-							return s
-						end
-						
-						local fileName = string.format("%s-%s-%s.png", randHex(4), randHex(4), randHex(4))
-						local loaded = false
-						
-						-- Prepare URL (if it's github, try standard and proxy urls to bypass restrictions)
-						local urlsToTry = { imgTarget }
-						if imgTarget:find("raw.githubusercontent.com") then
-							-- Add alternative CDN proxy mirrors if direct github raw fails
-							local proxyUrl = imgTarget:gsub("raw.githubusercontent.com", "jsdelivr.net/gh")
-							table.insert(urlsToTry, proxyUrl)
-						end
-						
-						for _, targetUrl in ipairs(urlsToTry) do
-							for attempt = 1, 3 do
-								local success, response = pcall(function()
-									return game:HttpGet(targetUrl)
-								end)
-								
-								if success and response and #response > 100 then
-									local writeSuccess = pcall(function()
-										writefile(fileName, response)
-									end)
-									
-									if writeSuccess then
-										local assetSuccess, assetId = pcall(function()
-											return getcustomasset(fileName)
-										end)
-										
-										if assetSuccess and assetId then
-											icon.Image = assetId
-											loaded = true
-											break
-										end
-									end
-								end
-								task.wait(0.3)
-							end
-							if loaded then break end
-						end
-						
-						if not loaded then
-							self:Print("Warning: Failed to fetch image via file. Falling back to direct URL.", Color3.fromRGB(255, 180, 0))
-							icon.Image = imgTarget
-						end
-					end)
+			
+			-- If it's a Roblox ID or rbxassetid string, apply it directly
+			if type(imgTarget) == "string" then
+				if imgTarget:match("^%d+$") then
+					icon.Image = "rbxassetid://" .. imgTarget
 				else
 					icon.Image = imgTarget
 				end
 			else
-				icon.Image = imgTarget
+				icon.Image = tostring(imgTarget)
 			end
-			
-			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
