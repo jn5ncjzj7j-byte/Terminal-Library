@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Clean Image Fix)
+	TerminalLib - Custom TUI Library for Roblox (Direct Init Fix)
 ]=]
 
 local TerminalLib = {}
@@ -11,7 +11,7 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
 
-function TerminalLib.new(titleText)
+function TerminalLib.new(titleText, customConfig)
 	local self = setmetatable({}, TerminalLib)
 	
 	self.Commands = {}
@@ -31,6 +31,13 @@ function TerminalLib.new(titleText)
 		BackgroundColor = Color3.fromRGB(30, 30, 30),
 		TextColor = Color3.fromRGB(0, 255, 100)
 	}
+	
+	-- Merge custom config if provided on initialization
+	if type(customConfig) == "table" then
+		for k, v in pairs(customConfig) do
+			self.ToggleConfig[k] = v
+		end
+	end
 	
 	self:BuildGui()
 	self:SetupDefaults()
@@ -53,14 +60,13 @@ function TerminalLib:ConfigureToggle(config)
 		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
 		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
 		
-		-- Clean up old icon first
 		local existingIcon = self.ToggleBtn:FindFirstChild("ToggleIcon")
 		if existingIcon then
 			existingIcon:Destroy()
 		end
 		
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
-			self.ToggleBtn.Text = "" -- Clear text so only the image shows
+			self.ToggleBtn.Text = ""
 			
 			local icon = Instance.new("ImageLabel")
 			icon.Name = "ToggleIcon"
@@ -269,6 +275,7 @@ function TerminalLib:BuildGui()
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
 	
+	-- Apply the toggle configuration immediately upon building
 	self:ConfigureToggle({})
 
 	self.ToggleBtn.MouseButton1Click:Connect(function()
