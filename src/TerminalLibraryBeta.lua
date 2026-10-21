@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Fixed Toggle Image Rendering)
+	TerminalLib - Custom TUI Library for Roblox (Clean Image Fix)
 ]=]
 
 local TerminalLib = {}
@@ -53,43 +53,38 @@ function TerminalLib:ConfigureToggle(config)
 		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
 		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
 		
+		-- Clean up old icon first
+		local existingIcon = self.ToggleBtn:FindFirstChild("ToggleIcon")
+		if existingIcon then
+			existingIcon:Destroy()
+		end
+		
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
-			self.ToggleBtn.Text = ""
+			self.ToggleBtn.Text = "" -- Clear text so only the image shows
 			
-			-- Look for existing icon or create a new one securely
-			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
-			if not icon then
-				icon = Instance.new("ImageLabel")
-				icon.Name = "ToggleIcon"
-				icon.AnchorPoint = Vector2.new(0.5, 0.5)
-				icon.Size = UDim2.new(0.85, 0, 0.85, 0)
-				icon.Position = UDim2.new(0.5, 0, 0.5, 0)
-				icon.BackgroundTransparency = 1
-				icon.ScaleType = Enum.ScaleType.Fit
-				icon.Parent = self.ToggleBtn
-				
-				local aspect = Instance.new("UIAspectRatioConstraint")
-				aspect.AspectRatio = 1
-				aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-				aspect.Parent = icon
-			end
+			local icon = Instance.new("ImageLabel")
+			icon.Name = "ToggleIcon"
+			icon.AnchorPoint = Vector2.new(0.5, 0.5)
+			icon.Size = UDim2.new(0.8, 0, 0.8, 0)
+			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+			icon.BackgroundTransparency = 1
+			icon.ScaleType = Enum.ScaleType.Fit
 			
-			local imgTarget = self.ToggleConfig.Image
+			local aspect = Instance.new("UIAspectRatioConstraint")
+			aspect.AspectRatio = 1
+			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
+			aspect.Parent = icon
 			
-			-- If it's a Roblox ID or rbxassetid string, apply it directly
-			if type(imgTarget) == "string" then
-				if imgTarget:match("^%d+$") then
-					icon.Image = "rbxassetid://" .. imgTarget
-				else
-					icon.Image = imgTarget
-				end
+			local imgTarget = tostring(self.ToggleConfig.Image)
+			if imgTarget:match("^%d+$") then
+				icon.Image = "rbxassetid://" .. imgTarget
 			else
-				icon.Image = tostring(imgTarget)
+				icon.Image = imgTarget
 			end
+			
+			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
-			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
-			if icon then icon:Destroy() end
 		end
 	end
 end
