@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox with Auto-Complete & Stats Header
+	TerminalLib - Custom TUI Library for Roblox (Reliable Enter Key Fix)
 ]=]
 
 local TerminalLib = {}
@@ -21,10 +21,59 @@ function TerminalLib.new(titleText)
 	self.IsOpen = true
 	self.Title = titleText or ("Misg-Hub @" .. self.Player.Name .. "~")
 	
+	self.ToggleKey = Enum.KeyCode.RightControl
+	
+	self.ToggleConfig = {
+		Text = "Misg Hub",
+		Image = nil,
+		Size = UDim2.new(0, 110, 0, 45),
+		Position = UDim2.new(0, 20, 0, 20),
+		BackgroundColor = Color3.fromRGB(30, 30, 30),
+		TextColor = Color3.fromRGB(0, 255, 100)
+	}
+	
 	self:BuildGui()
 	self:SetupDefaults()
 	
 	return self
+end
+
+function TerminalLib:ConfigureToggle(config)
+	if not config then return end
+	if config.Text ~= nil then self.ToggleConfig.Text = config.Text end
+	if config.Image ~= nil then self.ToggleConfig.Image = config.Image end
+	if config.Size ~= nil then self.ToggleConfig.Size = config.Size end
+	if config.Position ~= nil then self.ToggleConfig.Position = config.Position end
+	if config.BackgroundColor ~= nil then self.ToggleConfig.BackgroundColor = config.BackgroundColor end
+	if config.TextColor ~= nil then self.ToggleConfig.TextColor = config.TextColor end
+	
+	if self.ToggleBtn then
+		self.ToggleBtn.Size = self.ToggleConfig.Size
+		self.ToggleBtn.Position = self.ToggleConfig.Position
+		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
+		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
+		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
+			self.ToggleBtn.Text = ""
+			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
+			icon.Name = "ToggleIcon"
+			icon.Size = UDim2.new(1, -10, 1, -10)
+			icon.Position = UDim2.new(0, 5, 0, 5)
+			icon.BackgroundTransparency = 1
+			icon.Image = self.ToggleConfig.Image
+			icon.Parent = self.ToggleBtn
+		else
+			self.ToggleBtn.Text = self.ToggleConfig.Text
+			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
+			if icon then icon:Destroy() end
+		end
+	end
+end
+
+function TerminalLib:ToggleVisibility()
+	self.IsOpen = not self.IsOpen
+	if self.TerminalFrame then
+		self.TerminalFrame.Visible = self.IsOpen
+	end
 end
 
 function TerminalLib:BuildGui()
@@ -49,7 +98,6 @@ function TerminalLib:BuildGui()
 	corner.CornerRadius = UDim.new(0, 8)
 	corner.Parent = self.TerminalFrame
 
-	-- Top Bar with Stats
 	self.TopBar = Instance.new("Frame")
 	self.TopBar.Size = UDim2.new(1, 0, 0, 30)
 	self.TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -82,7 +130,6 @@ function TerminalLib:BuildGui()
 	statsLabel.TextXAlignment = Enum.TextXAlignment.Right
 	statsLabel.Parent = self.TopBar
 
-	-- FPS & Ping Loop
 	local frameCount, lastUpdate = 0, tick()
 	RunService.RenderStepped:Connect(function()
 		frameCount += 1
@@ -98,7 +145,6 @@ function TerminalLib:BuildGui()
 		end
 	end)
 
-	-- Draggable TopBar logic
 	local dragging, dragStart, startPos
 	self.TopBar.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -123,7 +169,6 @@ function TerminalLib:BuildGui()
 		end
 	end)
 
-	-- Output Scrolling Frame
 	self.OutputScroll = Instance.new("ScrollingFrame")
 	self.OutputScroll.Size = UDim2.new(1, -20, 1, -85)
 	self.OutputScroll.Position = UDim2.new(0, 10, 0, 40)
@@ -138,7 +183,6 @@ function TerminalLib:BuildGui()
 	uiList.Padding = UDim.new(0, 4)
 	uiList.Parent = self.OutputScroll
 
-	-- Suggestions Dropdown Frame
 	self.SuggestionsFrame = Instance.new("ScrollingFrame")
 	self.SuggestionsFrame.Size = UDim2.new(1, -20, 0, 65)
 	self.SuggestionsFrame.Position = UDim2.new(0, 10, 1, -112)
@@ -155,7 +199,6 @@ function TerminalLib:BuildGui()
 	sugList.Padding = UDim.new(0, 2)
 	sugList.Parent = self.SuggestionsFrame
 
-	-- Input Bar Frame
 	local inputBar = Instance.new("Frame")
 	inputBar.Size = UDim2.new(1, -20, 0, 35)
 	inputBar.Position = UDim2.new(0, 10, 1, -42)
@@ -191,36 +234,30 @@ function TerminalLib:BuildGui()
 	self.CommandInput.ClearTextOnFocus = false
 	self.CommandInput.Parent = inputBar
 
-	-- Mobile Toggle Button vs PC Right Control Keybind
-	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-	if isMobile then
-		local toggleBtn = Instance.new("TextButton")
-		toggleBtn.Name = "ToggleTerminalButton"
-		toggleBtn.Size = UDim2.new(0, 110, 0, 45)
-		toggleBtn.Position = UDim2.new(0, 20, 0, 20)
-		toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-		toggleBtn.Text = "Misg Hub"
-		toggleBtn.TextColor3 = Color3.fromRGB(0, 255, 100)
-		toggleBtn.TextSize = 14
-		toggleBtn.Font = Enum.Font.Code
-		toggleBtn.Parent = self.ScreenGui
-		
-		local btnCorner = Instance.new("UICorner")
-		btnCorner.CornerRadius = UDim.new(0, 8)
-		btnCorner.Parent = toggleBtn
-		
-		toggleBtn.MouseButton1Click:Connect(function()
-			self.IsOpen = not self.IsOpen
-			self.TerminalFrame.Visible = self.IsOpen
-		end)
-	else
-		UserInputService.InputBegan:Connect(function(input, gameProcessed)
-			if input.KeyCode == Enum.KeyCode.RightControl then
-				self.IsOpen = not self.IsOpen
-				self.TerminalFrame.Visible = self.IsOpen
-			end
-		end)
-	end
+	self.ToggleBtn = Instance.new("TextButton")
+	self.ToggleBtn.Name = "ToggleTerminalButton"
+	self.ToggleBtn.Size = self.ToggleConfig.Size
+	self.ToggleBtn.Position = self.ToggleConfig.Position
+	self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
+	self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
+	self.ToggleBtn.Text = self.ToggleConfig.Text
+	self.ToggleBtn.TextSize = 14
+	self.ToggleBtn.Font = Enum.Font.Code
+	self.ToggleBtn.Parent = self.ScreenGui
+
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 8)
+	btnCorner.Parent = self.ToggleBtn
+
+	self.ToggleBtn.MouseButton1Click:Connect(function()
+		self:ToggleVisibility()
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not gameProcessed and input.KeyCode == self.ToggleKey then
+			self:ToggleVisibility()
+		end
+	end)
 
 	self:ConnectEvents()
 end
@@ -298,9 +335,8 @@ function TerminalLib:ConnectEvents()
 		selfRef:UpdateSuggestions(selfRef.CommandInput.Text)
 	end)
 
-	self.CommandInput.FocusLost:Connect(function(enterPressed)
-		if not enterPressed then return end
-		
+	-- PROCESS COMMAND FUNCTION
+	local function processCommand()
 		local text = selfRef.CommandInput.Text:lower():gsub("^%s+", ""):gsub("%s+$", "")
 		selfRef.CommandInput.Text = ""
 		selfRef.SuggestionsFrame.Visible = false
@@ -326,6 +362,19 @@ function TerminalLib:ConnectEvents()
 		end
 		
 		selfRef.CommandInput:CaptureFocus()
+	end
+
+	-- Listen to both FocusLost and Enter keypress input to guarantee it fires
+	self.CommandInput.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			processCommand()
+		end
+	end)
+
+	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if not gameProcessed and self.CommandInput:IsFocused() and (input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter) then
+			processCommand()
+		end
 	end)
 end
 
@@ -342,9 +391,34 @@ function TerminalLib:SetupDefaults()
 			if child:IsA("TextLabel") then child:Destroy() end
 		end
 	end)
+
+	self:AddCommand("keybind", "Changes UI toggle key (Usage: keybind [KeyCode])", function(args)
+		local keyName = args[1]
+		if not keyName then
+			self:Print("Current Toggle Key: " .. tostring(self.ToggleKey.Name), Color3.fromRGB(0, 255, 100))
+			self:Print("Usage: keybind [key] (e.g. keybind f, keybind insert, keybind return)", Color3.fromRGB(150, 150, 150))
+			return
+		end
+		
+		keyName = string.upper(keyName)
+		val, enumItem = pcall(function()
+			return Enum.KeyCode[keyName]
+		end)
+		
+		local success, enumItem = pcall(function()
+			return Enum.KeyCode[keyName]
+		end)
+		
+		if success and enumItem then
+			self.ToggleKey = enumItem
+			self:Print("Success! Toggle keybind changed to: " .. enumItem.Name, Color3.fromRGB(0, 255, 100))
+		else
+			self:Print("Error: Invalid key name. Try values like F, Return, Insert, LeftControl", Color3.fromRGB(255, 80, 80))
+		end
+	end)
 	
 	self:Print("Terminal GUI Library Initialized.", Color3.fromRGB(0, 255, 100))
-	self:Print("Type 'help' or try typing letters for auto-suggestions.", Color3.fromRGB(150, 150, 150))
+	self:Print("Type 'help' or try typing 's' for auto-suggestions.", Color3.fromRGB(150, 150, 150))
 	self:Print("------------------------------------------------", Color3.fromRGB(60, 60, 60))
 end
 
