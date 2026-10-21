@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Strict Auto-Scale Fix)
+	TerminalLib - Custom TUI Library for Roblox (Robust Custom Asset Fix)
 ]=]
 
 local TerminalLib = {}
@@ -57,15 +57,12 @@ function TerminalLib:ConfigureToggle(config)
 			self.ToggleBtn.Text = ""
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
 			icon.Name = "ToggleIcon"
-			
-			-- ล็อกตำแหน่งให้อยู่ตรงกลางปุ่มพอดีเป๊ะ และเว้นขอบเล็กน้อย
 			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Size = UDim2.new(0.8, 0, 0.8, 0)
+			icon.Size = UDim2.new(0.85, 0, 0.85, 0)
 			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
 			icon.BackgroundTransparency = 1
 			icon.ScaleType = Enum.ScaleType.Fit
 			
-			-- บังคับสัดส่วน 1:1 ป้องกันไม่ให้ภาพความละเอียดสูงยืดหรือล้น
 			local aspect = icon:FindFirstChildOfClass("UIAspectRatioConstraint") or Instance.new("UIAspectRatioConstraint")
 			aspect.AspectRatio = 1
 			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
@@ -77,17 +74,20 @@ function TerminalLib:ConfigureToggle(config)
 				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
 				
 				if writefile and getcustomasset then
-					local success, response = pcall(function()
-						return game:HttpGet(imgTarget)
-					end)
-					if success and response then
-						local fileName = "terminal_logo_" .. math.abs(string.byte(imgTarget, 1, 5)) .. ".png"
-						pcall(function() writefile(fileName, response) end)
-						local customAssetPath = pcall(function() return getcustomasset(fileName) end)
-						if customAssetPath then
-							imgTarget = getcustomasset(fileName)
+					pcall(function()
+						-- Use a clean unique filename for caching
+						local fileName = "terminal_custom_logo.png"
+						local success, response = pcall(function()
+							return game:HttpGet(imgTarget)
+						end)
+						if success and response and #response > 0 then
+							writefile(fileName, response)
+							local assetId = getcustomasset(fileName)
+							if assetId then
+								imgTarget = assetId
+							end
 						end
-					end
+					end)
 				end
 			end
 			
@@ -278,7 +278,6 @@ function TerminalLib:BuildGui()
 	self.ToggleBtn.Parent = self.ScreenGui
 
 	local btnCorner = Instance.new("UICorner")
-import btnCorner = Instance.new("UICorner") -- (หรือโค้ดเดิมของคุณ)
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
 	
@@ -349,7 +348,7 @@ function TerminalLib:UpdateSuggestions(query)
 			btn.TextSize = 13
 			btn.Font = Enum.Font.Code
 			btn.TextXAlignment = Enum.TextXAlignment.Left
-			btn.Text = "  " .. match.Name .. " — " .. match.Desc
+			btn.Text = "  " + match.Name + " — " + match.Desc
 			btn.Parent = self.SuggestionsFrame
 			
 			btn.MouseButton1Click:Connect(function()
@@ -377,7 +376,7 @@ function TerminalLib:ConnectEvents()
 		
 		if text == "" then return end
 		
-		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
+		selfRef:Print("> " + text, Color3.fromRGB(255, 255, 255))
 		
 		local split = string.split(text, " ")
 		local cmdName = split[1]
