@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Reliable Enter Key Fix)
+	TerminalLib - Custom TUI Library for Roblox (With Web Image Link Support)
 ]=]
 
 local TerminalLib = {}
@@ -52,6 +52,7 @@ function TerminalLib:ConfigureToggle(config)
 		self.ToggleBtn.Position = self.ToggleConfig.Position
 		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
 		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
+		
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
 			self.ToggleBtn.Text = ""
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
@@ -59,7 +60,28 @@ function TerminalLib:ConfigureToggle(config)
 			icon.Size = UDim2.new(1, -10, 1, -10)
 			icon.Position = UDim2.new(0, 5, 0, 5)
 			icon.BackgroundTransparency = 1
-			icon.Image = self.ToggleConfig.Image
+			
+			-- ตรวจสอบว่าเป็นเว็บลิงก์ (https://) หรือ Roblox Asset ID (rbxassetid://)
+			local imgTarget = self.ToggleConfig.Image
+			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
+				local writefile = writefile or (syn and syn.writefile)
+				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
+				
+				if writefile and getcustomasset then
+					pcall(function()
+						local fileName = "terminal_img_" .. math.random(10000, 99999) .. ".png"
+						local success, response = pcall(function()
+							return game:HttpGet(imgTarget)
+						end)
+						if success and response then
+							writefile(fileName, response)
+							imgTarget = getcustomasset(fileName)
+						end
+					end)
+				end
+			end
+			
+			icon.Image = imgTarget
 			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
@@ -248,6 +270,9 @@ function TerminalLib:BuildGui()
 	local btnCorner = Instance.new("UICorner")
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
+	
+	-- Apply initial toggle button look
+	self:ConfigureToggle({})
 
 	self.ToggleBtn.MouseButton1Click:Connect(function()
 		self:ToggleVisibility()
@@ -335,7 +360,6 @@ function TerminalLib:ConnectEvents()
 		selfRef:UpdateSuggestions(selfRef.CommandInput.Text)
 	end)
 
-	-- PROCESS COMMAND FUNCTION
 	local function processCommand()
 		local text = selfRef.CommandInput.Text:lower():gsub("^%s+", ""):gsub("%s+$", "")
 		selfRef.CommandInput.Text = ""
@@ -364,7 +388,6 @@ function TerminalLib:ConnectEvents()
 		selfRef.CommandInput:CaptureFocus()
 	end
 
-	-- Listen to both FocusLost and Enter keypress input to guarantee it fires
 	self.CommandInput.FocusLost:Connect(function(enterPressed)
 		if enterPressed then
 			processCommand()
@@ -401,10 +424,6 @@ function TerminalLib:SetupDefaults()
 		end
 		
 		keyName = string.upper(keyName)
-		val, enumItem = pcall(function()
-			return Enum.KeyCode[keyName]
-		end)
-		
 		local success, enumItem = pcall(function()
 			return Enum.KeyCode[keyName]
 		end)
