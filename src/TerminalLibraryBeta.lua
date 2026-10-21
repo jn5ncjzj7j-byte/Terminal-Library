@@ -1,7 +1,3 @@
---[=[
-	TerminalLib - Custom TUI Library for Roblox (Full Library Code)
-]=]
-
 local TerminalLib = {}
 TerminalLib.__index = TerminalLib
 
@@ -26,7 +22,7 @@ function TerminalLib.new(titleText)
 	self.ToggleConfig = {
 		Text = "Misg Hub",
 		Image = nil,
-		Size = UDim2.new(0, 50, 0, 50),
+		Size = UDim2.new(0, 110, 0, 45),
 		Position = UDim2.new(0, 20, 0, 20),
 		BackgroundColor = Color3.fromRGB(30, 30, 30),
 		TextColor = Color3.fromRGB(0, 255, 100)
@@ -53,38 +49,39 @@ function TerminalLib:ConfigureToggle(config)
 		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
 		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
 		
-		-- ลบไอคอนเก่าทิ้งก่อนป้องกันการซ้ำซ้อน
-		local existingIcon = self.ToggleBtn:FindFirstChild("ToggleIcon")
-		if existingIcon then
-			existingIcon:Destroy()
-		end
-		
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
-			self.ToggleBtn.Text = "" -- ซ่อนข้อความเพื่อให้เห็นเฉพาะรูปภาพ
-			
-			local icon = Instance.new("ImageLabel")
+			self.ToggleBtn.Text = ""
+			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
 			icon.Name = "ToggleIcon"
-			icon.AnchorPoint = Vector2.new(0.5, 0.5)
-			icon.Size = UDim2.new(0.8, 0, 0.8, 0)
-			icon.Position = UDim2.new(0.5, 0, 0.5, 0)
+			icon.Size = UDim2.new(1, -10, 1, -10)
+			icon.Position = UDim2.new(0, 5, 0, 5)
 			icon.BackgroundTransparency = 1
-			icon.ScaleType = Enum.ScaleType.Fit
 			
-			local aspect = Instance.new("UIAspectRatioConstraint")
-			aspect.AspectRatio = 1
-			aspect.AspectType = Enum.AspectType.FitWithinMaxSize
-			aspect.Parent = icon
-			
-			local imgTarget = tostring(self.ToggleConfig.Image)
-			if imgTarget:match("^%d+$") then
-				icon.Image = "rbxassetid://" .. imgTarget
-			else
-				icon.Image = imgTarget
+			local imgTarget = self.ToggleConfig.Image
+			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
+				local writefile = writefile or (syn and syn.writefile)
+				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
+				
+				if writefile and getcustomasset then
+					pcall(function()
+						local fileName = "terminal_img_" .. math.random(10000, 99999) .. ".png"
+						local success, response = pcall(function()
+							return game:HttpGet(imgTarget)
+						end)
+						if success and response then
+							writefile(fileName, response)
+							imgTarget = getcustomasset(fileName)
+						end
+					end)
+				end
 			end
 			
+			icon.Image = imgTarget
 			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
+			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon")
+			if icon then icon:Destroy() end
 		end
 	end
 end
