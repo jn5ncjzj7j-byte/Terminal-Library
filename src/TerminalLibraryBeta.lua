@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (With Web Image Link Support)
+	TerminalLib - Custom TUI Library for Roblox (Pre-loaded Web Image Sync)
 ]=]
 
 local TerminalLib = {}
@@ -61,23 +61,24 @@ function TerminalLib:ConfigureToggle(config)
 			icon.Position = UDim2.new(0, 5, 0, 5)
 			icon.BackgroundTransparency = 1
 			
-			-- ตรวจสอบว่าเป็นเว็บลิงก์ (https://) หรือ Roblox Asset ID (rbxassetid://)
 			local imgTarget = self.ToggleConfig.Image
 			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
 				local writefile = writefile or (syn and syn.writefile)
 				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
 				
 				if writefile and getcustomasset then
-					pcall(function()
-						local fileName = "terminal_img_" .. math.random(10000, 99999) .. ".png"
-						local success, response = pcall(function()
-							return game:HttpGet(imgTarget)
-						end)
-						if success and response then
-							writefile(fileName, response)
+					-- Force synchronous download so it is ready instantly
+					local success, response = pcall(function()
+						return game:HttpGet(imgTarget)
+					end)
+					if success and response then
+						local fileName = "terminal_logo_" .. math.abs(string.byte(imgTarget, 1, 5)) .. ".png"
+						pcall(function() writefile(fileName, response) end)
+						local customAssetPath = pcall(function() return getcustomasset(fileName) end)
+						if customAssetPath then
 							imgTarget = getcustomasset(fileName)
 						end
-					end)
+					end
 				end
 			end
 			
@@ -271,7 +272,6 @@ function TerminalLib:BuildGui()
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
 	
-	-- Apply initial toggle button look
 	self:ConfigureToggle({})
 
 	self.ToggleBtn.MouseButton1Click:Connect(function()
