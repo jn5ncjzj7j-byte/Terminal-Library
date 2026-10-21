@@ -1,5 +1,5 @@
 --[=[
-	TerminalLib - Custom TUI Library for Roblox (Randomized Unique Asset Caching)
+	TerminalLib - Custom TUI Library for Roblox (Loop-Retry Asset Downloader)
 ]=]
 
 local TerminalLib = {}
@@ -74,8 +74,8 @@ function TerminalLib:ConfigureToggle(config)
 				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
 				
 				if writefile and getcustomasset then
-					pcall(function()
-						-- Generate a randomized unique name like XXXX-XXXX-XXXX.png
+					-- Run in a separate thread so it loops and forces loading until it succeeds
+					task.spawn(function()
 						local function randHex(length)
 							local chars = "abcdef0123456789"
 							local s = ""
@@ -87,22 +87,43 @@ function TerminalLib:ConfigureToggle(config)
 						end
 						
 						local fileName = string.format("%s-%s-%s.png", randHex(4), randHex(4), randHex(4))
+						local loaded = false
 						
-						local success, response = pcall(function()
-							return game:HttpGet(imgTarget)
-						end)
-						if success and response and #response > 0 then
-							writefile(fileName, response)
-							local assetId = getcustomasset(fileName)
-							if assetId then
-								imgTarget = assetId
+						-- Loop-load retry mechanism until the image successfully downloads and applies
+						for attempt = 1, 5 do
+							local success, response = pcall(function()
+								return game:HttpGet(imgTarget)
+							end)
+							if success and response and #response > 100 then
+								local writeSuccess = pcall(function()
+									writefile(fileName, response)
+								end)
+								if writeSuccess then
+									local assetSuccess, assetId = pcall(function()
+										return getcustomasset(fileName)
+									end)
+									if assetSuccess and assetId then
+										icon.Image = assetId
+										loaded = true
+										break
+									end
+								end
 							end
+							task.wait(0.5) -- Wait half a second before retrying if it fails
+						end
+						
+						-- Fallback if download fails completely
+						if not loaded then
+							icon.Image = imgTarget
 						end
 					end)
+				else
+					icon.Image = imgTarget
 				end
+			else
+				icon.Image = imgTarget
 			end
 			
-			icon.Image = imgTarget
 			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
