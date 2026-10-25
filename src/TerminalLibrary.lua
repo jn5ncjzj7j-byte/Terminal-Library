@@ -1,5 +1,5 @@
 --[=[
-	TerminalLibrary by misghub
+	TerminalLib - Custom TUI Library for Roblox (With Web Image Link Support)
 ]=]
 
 local TerminalLib = {}
@@ -12,17 +12,36 @@ local CoreGui = game:GetService("CoreGui")
 local Stats = game:GetService("Stats")
 
 function TerminalLib.new(titleText)
+	local env = (getgenv and getgenv()) or _G
+	if env.__TerminalLibInstance and env.__TerminalLibInstance.Destroy then
+		pcall(function()
+			env.__TerminalLibInstance:Destroy()
+		end)
+	end
+
 	local self = setmetatable({}, TerminalLib)
-	
+	env.__TerminalLibInstance = self
+
 	self.Commands = {}
+	self.Connections = {}
+	self.OutputLines = {}
+	self.LineCounter = 0
+	self.MaxLines = 200
+	self.History = {}
+	self.HistoryIndex = 1
+	self.Matches = {}
+	self.ImageCache = {}
+	self.TempFiles = {}
+	self.Destroyed = false
+
 	self.Player = Players.LocalPlayer
 	self.PlayerGui = self.Player:WaitForChild("PlayerGui")
 	self.ProtectedParent = (gethui and gethui()) or (get_hidden_gui and get_hidden_gui()) or CoreGui
 	self.IsOpen = true
 	self.Title = titleText or ("Misg-Hub @" .. self.Player.Name .. "~")
-	
+
 	self.ToggleKey = Enum.KeyCode.RightControl
-	
+
 	self.ToggleConfig = {
 		Text = "Misg Hub",
 		Image = nil,
@@ -31,11 +50,79 @@ function TerminalLib.new(titleText)
 		BackgroundColor = Color3.fromRGB(30, 30, 30),
 		TextColor = Color3.fromRGB(0, 255, 100)
 	}
-	
+
 	self:BuildGui()
 	self:SetupDefaults()
-	
+
 	return self
+end
+
+function TerminalLib:Connect(signal, callback)
+	local connection = signal:Connect(callback)
+	table.insert(self.Connections, connection)
+	return connection
+end
+
+function TerminalLib:Destroy()
+	if self.Destroyed then return end
+	self.Destroyed = true
+
+	for _, connection in ipairs(self.Connections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+	end
+	self.Connections = {}
+
+	if self.ScreenGui then
+		self.ScreenGui:Destroy()
+	end
+
+	local deleter = delfile or (syn and syn.delfile)
+	if deleter then
+		for _, fileName in ipairs(self.TempFiles) do
+			pcall(deleter, fileName)
+		end
+	end
+	self.TempFiles = {}
+	self.ImageCache = {}
+
+	local env = (getgenv and getgenv()) or _G
+	if env.__TerminalLibInstance == self then
+		env.__TerminalLibInstance = nil
+	end
+end
+
+function TerminalLib:ResolveImage(imgTarget)
+	if type(imgTarget) ~= "string" or not imgTarget:match("^https?://") then
+		return imgTarget
+	end
+
+	if self.ImageCache[imgTarget] then
+		return self.ImageCache[imgTarget]
+	end
+
+	local writer = writefile or (syn and syn.writefile)
+	local assetGetter = getcustomasset or (syn and syn.getcustomasset)
+	if not (writer and assetGetter) then
+		return imgTarget
+	end
+
+	local resolved = imgTarget
+	pcall(function()
+		local ok, response = pcall(function()
+			return game:HttpGet(imgTarget)
+		end)
+		if ok and response then
+			local fileName = "terminal_img_" .. math.random(10000, 99999) .. ".png"
+			writer(fileName, response)
+			table.insert(self.TempFiles, fileName)
+			resolved = assetGetter(fileName)
+		end
+	end)
+
+	self.ImageCache[imgTarget] = resolved
+	return resolved
 end
 
 function TerminalLib:ConfigureToggle(config)
@@ -46,13 +133,13 @@ function TerminalLib:ConfigureToggle(config)
 	if config.Position ~= nil then self.ToggleConfig.Position = config.Position end
 	if config.BackgroundColor ~= nil then self.ToggleConfig.BackgroundColor = config.BackgroundColor end
 	if config.TextColor ~= nil then self.ToggleConfig.TextColor = config.TextColor end
-	
+
 	if self.ToggleBtn then
 		self.ToggleBtn.Size = self.ToggleConfig.Size
 		self.ToggleBtn.Position = self.ToggleConfig.Position
 		self.ToggleBtn.BackgroundColor3 = self.ToggleConfig.BackgroundColor
 		self.ToggleBtn.TextColor3 = self.ToggleConfig.TextColor
-		
+
 		if self.ToggleConfig.Image ~= "" and self.ToggleConfig.Image ~= nil then
 			self.ToggleBtn.Text = ""
 			local icon = self.ToggleBtn:FindFirstChild("ToggleIcon") or Instance.new("ImageLabel")
@@ -60,27 +147,7 @@ function TerminalLib:ConfigureToggle(config)
 			icon.Size = UDim2.new(1, -10, 1, -10)
 			icon.Position = UDim2.new(0, 5, 0, 5)
 			icon.BackgroundTransparency = 1
-			
-			local imgTarget = self.ToggleConfig.Image
-			if type(imgTarget) == "string" and imgTarget:match("^https?://") then
-				local writefile = writefile or (syn and syn.writefile)
-				local getcustomasset = getcustomasset or (syn and syn.getcustomasset)
-				
-				if writefile and getcustomasset then
-					pcall(function()
-						local fileName = "terminal_img_" .. math.random(10000, 99999) .. ".png"
-						local success, response = pcall(function()
-							return game:HttpGet(imgTarget)
-						end)
-						if success and response then
-							writefile(fileName, response)
-							imgTarget = getcustomasset(fileName)
-						end
-					end)
-				end
-			end
-			
-			icon.Image = imgTarget
+			icon.Image = self:ResolveImage(self.ToggleConfig.Image)
 			icon.Parent = self.ToggleBtn
 		else
 			self.ToggleBtn.Text = self.ToggleConfig.Text
@@ -104,7 +171,7 @@ function TerminalLib:BuildGui()
 	self.ScreenGui = Instance.new("ScreenGui")
 	self.ScreenGui.Name = "TerminalLibraryGui"
 	self.ScreenGui.ResetOnSpawn = false
-	self.ScreenGui.DisplayOrder = math.huge
+	self.ScreenGui.DisplayOrder = 2147483647
 	self.ScreenGui.Parent = self.ProtectedParent
 
 	self.TerminalFrame = Instance.new("Frame")
@@ -152,7 +219,7 @@ function TerminalLib:BuildGui()
 	statsLabel.Parent = self.TopBar
 
 	local frameCount, lastUpdate = 0, tick()
-	RunService.RenderStepped:Connect(function()
+	self:Connect(RunService.RenderStepped, function()
 		frameCount += 1
 		local now = tick()
 		if now - lastUpdate >= 0.1 then
@@ -167,7 +234,7 @@ function TerminalLib:BuildGui()
 	end)
 
 	local dragging, dragStart, startPos
-	self.TopBar.InputBegan:Connect(function(input)
+	self:Connect(self.TopBar.InputBegan, function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			dragStart = input.Position
@@ -180,7 +247,7 @@ function TerminalLib:BuildGui()
 		end
 	end)
 
-	UserInputService.InputChanged:Connect(function(input)
+	self:Connect(UserInputService.InputChanged, function(input)
 		if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 			local delta = input.Position - dragStart
 			self.TerminalFrame.Position = UDim2.new(
@@ -269,14 +336,14 @@ function TerminalLib:BuildGui()
 	local btnCorner = Instance.new("UICorner")
 	btnCorner.CornerRadius = UDim.new(0, 8)
 	btnCorner.Parent = self.ToggleBtn
-	
+
 	self:ConfigureToggle({})
 
-	self.ToggleBtn.MouseButton1Click:Connect(function()
+	self:Connect(self.ToggleBtn.MouseButton1Click, function()
 		self:ToggleVisibility()
 	end)
 
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	self:Connect(UserInputService.InputBegan, function(input, gameProcessed)
 		if not gameProcessed and input.KeyCode == self.ToggleKey then
 			self:ToggleVisibility()
 		end
@@ -286,20 +353,42 @@ function TerminalLib:BuildGui()
 end
 
 function TerminalLib:Print(text, color)
+	if self.Destroyed then return end
+
+	self.LineCounter += 1
+
 	local label = Instance.new("TextLabel")
-	label.Size = UDim2.new(1, 0, 0, 18)
+	label.Size = UDim2.new(1, 0, 0, 0)
+	label.AutomaticSize = Enum.AutomaticSize.Y
 	label.BackgroundTransparency = 1
-	label.Text = text
+	label.Text = tostring(text)
 	label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
 	label.TextSize = 13
 	label.Font = Enum.Font.Code
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Top
 	label.TextWrapped = true
+	label.LayoutOrder = self.LineCounter
 	label.Parent = self.OutputScroll
-	
+
+	table.insert(self.OutputLines, label)
+	while #self.OutputLines > self.MaxLines do
+		local oldest = table.remove(self.OutputLines, 1)
+		if oldest then oldest:Destroy() end
+	end
+
 	task.defer(function()
+		task.wait()
+		if self.Destroyed then return end
 		self.OutputScroll.CanvasPosition = Vector2.new(0, self.OutputScroll.AbsoluteCanvasSize.Y)
 	end)
+end
+
+function TerminalLib:Clear()
+	for _, label in ipairs(self.OutputLines) do
+		label:Destroy()
+	end
+	self.OutputLines = {}
 end
 
 function TerminalLib:AddCommand(name, description, callback)
@@ -309,27 +398,37 @@ function TerminalLib:AddCommand(name, description, callback)
 	}
 end
 
+function TerminalLib:GetSortedCommandNames()
+	local names = {}
+	for name in pairs(self.Commands) do
+		table.insert(names, name)
+	end
+	table.sort(names)
+	return names
+end
+
 function TerminalLib:UpdateSuggestions(query)
 	for _, child in ipairs(self.SuggestionsFrame:GetChildren()) do
 		if child:IsA("TextButton") then child:Destroy() end
 	end
-	
+
+	self.Matches = {}
+
 	query = string.lower(string.match(query, "^%s*(.-)%s*$") or "")
 	if query == "" then
 		self.SuggestionsFrame.Visible = false
 		return
 	end
-	
-	local matches = {}
-	for name, data in pairs(self.Commands) do
+
+	for _, name in ipairs(self:GetSortedCommandNames()) do
 		if string.sub(name, 1, #query) == query then
-			table.insert(matches, {Name = name, Desc = data.Description})
+			table.insert(self.Matches, name)
 		end
 	end
-	
-	if #matches > 0 then
+
+	if #self.Matches > 0 then
 		self.SuggestionsFrame.Visible = true
-		for _, match in ipairs(matches) do
+		for index, name in ipairs(self.Matches) do
 			local btn = Instance.new("TextButton")
 			btn.Size = UDim2.new(1, 0, 0, 22)
 			btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
@@ -337,11 +436,12 @@ function TerminalLib:UpdateSuggestions(query)
 			btn.TextSize = 13
 			btn.Font = Enum.Font.Code
 			btn.TextXAlignment = Enum.TextXAlignment.Left
-			btn.Text = "  " .. match.Name .. " — " .. match.Desc
+			btn.Text = "  " .. name .. " — " .. self.Commands[name].Description
+			btn.LayoutOrder = index
 			btn.Parent = self.SuggestionsFrame
-			
+
 			btn.MouseButton1Click:Connect(function()
-				self.CommandInput.Text = match.Name .. " "
+				self.CommandInput.Text = name .. " "
 				self.SuggestionsFrame.Visible = false
 				self.CommandInput:CaptureFocus()
 			end)
@@ -351,30 +451,47 @@ function TerminalLib:UpdateSuggestions(query)
 	end
 end
 
+function TerminalLib:SetInputText(text)
+	self.CommandInput.Text = text
+	self.CommandInput.CursorPosition = #text + 1
+end
+
 function TerminalLib:ConnectEvents()
 	local selfRef = self
 
-	self.CommandInput:GetPropertyChangedSignal("Text"):Connect(function()
-		selfRef:UpdateSuggestions(selfRef.CommandInput.Text)
+	self:Connect(self.CommandInput:GetPropertyChangedSignal("Text"), function()
+		local current = selfRef.CommandInput.Text
+		if current:find("\t") then
+			selfRef.CommandInput.Text = (current:gsub("\t", ""))
+			return
+		end
+		selfRef:UpdateSuggestions(current)
 	end)
 
 	local function processCommand()
-		local text = selfRef.CommandInput.Text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+		local raw = selfRef.CommandInput.Text:match("^%s*(.-)%s*$") or ""
 		selfRef.CommandInput.Text = ""
 		selfRef.SuggestionsFrame.Visible = false
-		
-		if text == "" then return end
-		
-		selfRef:Print("> " .. text, Color3.fromRGB(255, 255, 255))
-		
-		local split = string.split(text, " ")
-		local cmdName = split[1]
+
+		if raw == "" then return end
+
+		if selfRef.History[#selfRef.History] ~= raw then
+			table.insert(selfRef.History, raw)
+		end
+		selfRef.HistoryIndex = #selfRef.History + 1
+
+		selfRef:Print("> " .. raw, Color3.fromRGB(255, 255, 255))
+
 		local args = {}
-		for i = 2, #split do table.insert(args, split[i]) end
-		
-		if selfRef.Commands[cmdName] then
+		for word in raw:gmatch("%S+") do
+			table.insert(args, word)
+		end
+		local cmdName = string.lower(table.remove(args, 1))
+
+		local command = selfRef.Commands[cmdName]
+		if command then
 			local success, err = pcall(function()
-				selfRef.Commands[cmdName].Callback(args)
+				command.Callback(args)
 			end)
 			if not success then
 				selfRef:Print("Execution Error: " .. tostring(err), Color3.fromRGB(255, 80, 80))
@@ -382,19 +499,39 @@ function TerminalLib:ConnectEvents()
 		else
 			selfRef:Print("Unknown command. Type 'help' for options.", Color3.fromRGB(255, 80, 80))
 		end
-		
-		selfRef.CommandInput:CaptureFocus()
+
+		task.defer(function()
+			if not selfRef.Destroyed then
+				selfRef.CommandInput:CaptureFocus()
+			end
+		end)
 	end
 
-	self.CommandInput.FocusLost:Connect(function(enterPressed)
+	self:Connect(self.CommandInput.FocusLost, function(enterPressed)
 		if enterPressed then
 			processCommand()
 		end
 	end)
 
-	UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if not gameProcessed and self.CommandInput:IsFocused() and (input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter) then
-			processCommand()
+	self:Connect(UserInputService.InputBegan, function(input)
+		if not selfRef.CommandInput:IsFocused() then return end
+
+		if input.KeyCode == Enum.KeyCode.Up then
+			if #selfRef.History == 0 then return end
+			selfRef.HistoryIndex = math.max(1, selfRef.HistoryIndex - 1)
+			selfRef:SetInputText(selfRef.History[selfRef.HistoryIndex])
+		elseif input.KeyCode == Enum.KeyCode.Down then
+			if #selfRef.History == 0 then return end
+			selfRef.HistoryIndex = math.min(#selfRef.History + 1, selfRef.HistoryIndex + 1)
+			selfRef:SetInputText(selfRef.History[selfRef.HistoryIndex] or "")
+		elseif input.KeyCode == Enum.KeyCode.Tab then
+			local top = selfRef.Matches[1]
+			if top then
+				task.defer(function()
+					selfRef:SetInputText(top .. " ")
+					selfRef.SuggestionsFrame.Visible = false
+				end)
+			end
 		end
 	end)
 end
@@ -402,15 +539,13 @@ end
 function TerminalLib:SetupDefaults()
 	self:AddCommand("help", "Lists all available commands", function()
 		self:Print("=== COMMAND LIST ===", Color3.fromRGB(255, 255, 100))
-		for name, data in pairs(self.Commands) do
-			self:Print(string.format(" - %-10s : %s", name, data.Description), Color3.fromRGB(200, 200, 200))
+		for _, name in ipairs(self:GetSortedCommandNames()) do
+			self:Print(string.format(" - %-10s : %s", name, self.Commands[name].Description), Color3.fromRGB(200, 200, 200))
 		end
 	end)
 
 	self:AddCommand("clear", "Clears terminal history", function()
-		for _, child in ipairs(self.OutputScroll:GetChildren()) do
-			if child:IsA("TextLabel") then child:Destroy() end
-		end
+		self:Clear()
 	end)
 
 	self:AddCommand("keybind", "Changes UI toggle key (Usage: keybind [KeyCode])", function(args)
@@ -420,20 +555,24 @@ function TerminalLib:SetupDefaults()
 			self:Print("Usage: keybind [key] (e.g. keybind f, keybind insert, keybind return)", Color3.fromRGB(150, 150, 150))
 			return
 		end
-		
-		keyName = string.upper(keyName)
-		local success, enumItem = pcall(function()
-			return Enum.KeyCode[keyName]
-		end)
-		
-		if success and enumItem then
-			self.ToggleKey = enumItem
-			self:Print("Success! Toggle keybind changed to: " .. enumItem.Name, Color3.fromRGB(0, 255, 100))
+
+		local target = string.lower(keyName)
+		local found
+		for _, item in ipairs(Enum.KeyCode:GetEnumItems()) do
+			if string.lower(item.Name) == target then
+				found = item
+				break
+			end
+		end
+
+		if found then
+			self.ToggleKey = found
+			self:Print("Success! Toggle keybind changed to: " .. found.Name, Color3.fromRGB(0, 255, 100))
 		else
 			self:Print("Error: Invalid key name. Try values like F, Return, Insert, LeftControl", Color3.fromRGB(255, 80, 80))
 		end
 	end)
-	
+
 	self:Print("Terminal GUI Library Initialized.", Color3.fromRGB(0, 255, 100))
 	self:Print("Type 'help' or try typing 's' for auto-suggestions.", Color3.fromRGB(150, 150, 150))
 	self:Print("------------------------------------------------", Color3.fromRGB(60, 60, 60))
