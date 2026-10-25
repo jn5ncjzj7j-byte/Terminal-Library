@@ -11,7 +11,7 @@ local GRAY = Color3.fromRGB(150, 150, 150)
 local WHITE = Color3.fromRGB(255, 255, 255)
 
 -- Create the terminal (title is optional)
-local Terminal = TerminalLib.new("Misg-Hub @" .. LocalPlayer.Name .. "~")
+local Terminal = TerminalLib.new("Excample-Hub @" .. LocalPlayer.Name .. "~")
 
 -- Keep up to 300 lines on screen
 Terminal.MaxLines = 300
