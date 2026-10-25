@@ -21,7 +21,7 @@ A custom terminal-style (TUI) UI library for Roblox. Add your own commands, get 
 Upload `TerminalLib.lua` to your repo, then load it with its raw link:
 
 ```lua
-local TerminalLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/TerminalLib.lua"))()
+local TerminalLib = loadstring(game:HttpGet("https://github.com/jn5ncjzj7j-byte/Terminal-Library/raw/refs/heads/main/src/TerminalLibrary.lua"))()
 ```
 
 Replace `USERNAME` and `REPO` with your GitHub username and repository name.
@@ -29,7 +29,7 @@ Replace `USERNAME` and `REPO` with your GitHub username and repository name.
 ## Quick Start
 
 ```lua
-local TerminalLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/TerminalLib.lua"))()
+local TerminalLib = loadstring(game:HttpGet("https://github.com/jn5ncjzj7j-byte/Terminal-Library/raw/refs/heads/main/src/TerminalLibrary.lua"))()
 
 local Terminal = TerminalLib.new("My Hub @" .. game.Players.LocalPlayer.Name)
 
@@ -177,7 +177,7 @@ Terminal:Destroy()
 ## Full Example
 
 ```lua
-local TerminalLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/TerminalLib.lua"))()
+local TerminalLib = loadstring(game:HttpGet("https://github.com/jn5ncjzj7j-byte/Terminal-Library/raw/refs/heads/main/src/TerminalLibrary.lua"))()
 
 local Terminal = TerminalLib.new("Misg-Hub @" .. game.Players.LocalPlayer.Name .. "~")
 
