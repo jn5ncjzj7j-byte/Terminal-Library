@@ -1,16 +1,19 @@
 # TerminalLib
 
-A custom terminal-style (TUI) UI library for Roblox. Add your own commands, get auto-suggestions, drag the window around, and toggle it with a key or a button. The toggle button supports web image links.
+A custom terminal-style (TUI) UI library for Roblox. Add your own commands, get auto-suggestions, command history, and a draggable window you can toggle with a key or a button. The toggle button supports web image links.
 
 ## Features
 
 - Draggable terminal window (mouse and touch)
 - Custom commands with descriptions and arguments
-- Auto-suggestions while typing
+- Auto-suggestions while typing, with `Tab` to autocomplete
+- Command history with `Up` / `Down`
 - Live FPS and ping display
 - Toggle with a keybind or an on-screen button
 - Customizable toggle button (text, size, position, colors, image)
 - Image support for `rbxassetid://` and web links (`https://`)
+- Wrapped output lines and an automatic line limit
+- Clean `Destroy()` that removes the GUI and disconnects everything
 - Built-in commands: `help`, `clear`, `keybind`
 
 ## Installation
@@ -37,11 +40,20 @@ end)
 
 Press `RightControl` (default) or click the toggle button to show or hide the terminal.
 
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Enter` | Run the command |
+| `Up` / `Down` | Browse command history |
+| `Tab` | Autocomplete the top suggestion |
+| `RightControl` | Show / hide the terminal (changeable) |
+
 ## API
 
 ### `TerminalLib.new(titleText)`
 
-Creates the terminal.
+Creates the terminal. If an older terminal from this library is still open, it is destroyed first.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -71,11 +83,11 @@ Terminal:AddCommand("speed", "Sets walk speed (Usage: speed [number])", function
 end)
 ```
 
-> Input is lowercased before it is processed, so command names and arguments always arrive in lowercase.
+> Only the command name is case-insensitive. Arguments keep the casing the user typed, so player names and text work as expected.
 
 ### `Terminal:Print(text, color)`
 
-Prints a line to the terminal.
+Prints a line to the terminal. Long lines wrap automatically.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
@@ -85,6 +97,18 @@ Prints a line to the terminal.
 ```lua
 Terminal:Print("Success!", Color3.fromRGB(0, 255, 100))
 Terminal:Print("Something went wrong", Color3.fromRGB(255, 80, 80))
+```
+
+### `Terminal:Clear()`
+
+Clears all output lines. The `clear` command uses this.
+
+### `Terminal.MaxLines`
+
+Maximum number of output lines kept on screen. Older lines are removed first. Default is `200`.
+
+```lua
+Terminal.MaxLines = 500
 ```
 
 ### `Terminal:ConfigureToggle(config)`
@@ -113,22 +137,16 @@ Terminal:ConfigureToggle({
 Using an image:
 
 ```lua
--- Roblox asset
 Terminal:ConfigureToggle({ Image = "rbxassetid://123456789" })
 
--- Web link
 Terminal:ConfigureToggle({ Image = "https://example.com/icon.png" })
 ```
 
-To go back to text, set `Image = ""`.
+To go back to text, set `Image = ""`. Web images are downloaded once per link and reused.
 
 ### `Terminal:ToggleVisibility()`
 
 Shows or hides the terminal.
-
-```lua
-Terminal:ToggleVisibility()
-```
 
 ### `Terminal.ToggleKey`
 
@@ -140,13 +158,21 @@ Terminal.ToggleKey = Enum.KeyCode.Insert
 
 Players can also change it in-game with the `keybind` command.
 
+### `Terminal:Destroy()`
+
+Removes the GUI, disconnects all events, and deletes any temporary image files it created.
+
+```lua
+Terminal:Destroy()
+```
+
 ## Built-in Commands
 
 | Command | Description |
 |---------|-------------|
-| `help` | Lists all available commands |
+| `help` | Lists all available commands (sorted A to Z) |
 | `clear` | Clears the terminal history |
-| `keybind [key]` | Changes the toggle key, e.g. `keybind f` or `keybind insert`. Run it without a key to see the current one |
+| `keybind [key]` | Changes the toggle key, e.g. `keybind f` or `keybind insert`. Key names are not case-sensitive. Run it without a key to see the current one |
 
 ## Full Example
 
@@ -180,7 +206,7 @@ end)
 
 - Web image links need an executor that supports `writefile`, `getcustomasset`, and `game:HttpGet`. Without them, use an `rbxassetid://` image instead.
 - The GUI is parented to `gethui()` / `get_hidden_gui()` when available, otherwise `CoreGui`.
-- Creating a new terminal removes any previous `TerminalLibraryGui`.
+- Running the script again destroys the previous terminal first, so you won't get duplicate windows or leftover connections.
 
 ## License
 
