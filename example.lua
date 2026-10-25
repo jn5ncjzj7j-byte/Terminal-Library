@@ -1,4 +1,4 @@
-local TerminalLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/TerminalLib.lua"))()
+local TerminalLib = loadstring(game:HttpGet("https://github.com/jn5ncjzj7j-byte/Terminal-Library/raw/refs/heads/main/src/TerminalLibrary.lua"))()
 
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
